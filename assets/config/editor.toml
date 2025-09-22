@@ -1,0 +1,262 @@
+show_help_on_start = true
+
+[viewport]
+grid = true
+grid_distance = 100.0
+grid_color = [
+    0.12399999797344208,
+    0.12399999797344208,
+    0.12399999797344208,
+    1.0,
+]
+grid_size = 1.0
+
+[viewport.visualizers]
+selection_enabled = true
+selection_active_color = [
+    0.0,
+    0.029999999329447746,
+    1.0,
+]
+selection_color = [
+    0.30000001192092896,
+    0.30000001192092896,
+    0.30000001192092896,
+]
+selection_corner_length = 0.3499999940395355
+selection_bounds_offset = 0.10000000149011612
+selection_line_thickness = 3.0
+debug_enabled = true
+debug_selected_only = true
+debug_relationship_lines = true
+debug_color = [
+    0.800000011920929,
+    1.0,
+    0.0,
+]
+debug_line_thickness = 0.75
+icons_enabled = true
+icon_size = 0.20000000298023224
+icon_distance_scaling = false
+icon_max_distance = 100.0
+icon_color = [
+    1.0,
+    0.0,
+    0.0,
+]
+icon_show_selected = true
+icon_show_active = false
+
+[theme_state]
+theme = "Dark"
+font_scale = 1.100000023841858
+spacing = 0.0
+
+[theme_state.font_baseline]
+Small = 9.0
+Heading = 18.0
+Button = 12.5
+Monospace = 11.0
+Body = 12.5
+
+[import_state.import_settings]
+create_mat_on_import = true
+material_name_source = "FileContents"
+
+[dock]
+store_position_on_close = true
+side_panel_position = "Right"
+
+[dock.layout_str]
+right_dock_state = """
+focused_surface = 0
+
+[[surfaces]]
+
+[surfaces.Main]
+focused_node = 1
+collapsed = false
+collapsed_leaf_count = 0
+
+[[surfaces.Main.nodes]]
+
+[surfaces.Main.nodes.Vertical]
+fraction = 0.30000001192092896
+fully_collapsed = false
+collapsed_leaf_count = 0
+
+[surfaces.Main.nodes.Vertical.rect.min]
+x = 1901.34375
+y = 56.0
+
+[surfaces.Main.nodes.Vertical.rect.max]
+x = 2552.0
+y = 1367.34375
+
+[[surfaces.Main.nodes]]
+
+[surfaces.Main.nodes.Leaf]
+active = 0
+scroll = 0.0
+collapsed = false
+
+[surfaces.Main.nodes.Leaf.rect.min]
+x = 1901.34375
+y = 56.0
+
+[surfaces.Main.nodes.Leaf.rect.max]
+x = 2552.0
+y = 449.3333435058594
+
+[surfaces.Main.nodes.Leaf.viewport.min]
+x = 1901.34375
+y = 80.0
+
+[surfaces.Main.nodes.Leaf.viewport.max]
+x = 2552.0
+y = 449.34375
+
+[[surfaces.Main.nodes.Leaf.tabs]]
+
+[surfaces.Main.nodes.Leaf.tabs.NodeTree]
+
+[[surfaces.Main.nodes.Leaf.tabs]]
+
+[surfaces.Main.nodes.Leaf.tabs.EditorSettings]
+
+[[surfaces.Main.nodes]]
+
+[surfaces.Main.nodes.Leaf]
+active = 0
+scroll = 0.0
+collapsed = false
+
+[surfaces.Main.nodes.Leaf.rect.min]
+x = 1901.34375
+y = 450.0
+
+[surfaces.Main.nodes.Leaf.rect.max]
+x = 2552.0
+y = 1367.34375
+
+[surfaces.Main.nodes.Leaf.viewport.min]
+x = 1901.34375
+y = 474.0
+
+[surfaces.Main.nodes.Leaf.viewport.max]
+x = 2552.0
+y = 1367.34375
+
+[[surfaces.Main.nodes.Leaf.tabs]]
+
+[surfaces.Main.nodes.Leaf.tabs.EntityEditor]
+
+[translations.tab_context_menu]
+close_button = "Close"
+eject_button = "Eject"
+
+[translations.leaf]
+close_button_disabled_tooltip = "This leaf contains non-closable tabs."
+close_all_button = "Close window"
+close_all_button_menu_hint = "Right click to close this window."
+close_all_button_modifier_hint = "Press modifier keys (Shift by default) to close this window."
+close_all_button_modifier_menu_hint = "Press modifier keys (Shift by default) or right click to close this window."
+close_all_button_disabled_tooltip = "This window contains non-closable tabs."
+minimize_button = "Minimize window"
+minimize_button_menu_hint = "Right click to minimize this window."
+minimize_button_modifier_hint = "Press modifier keys (Shift by default) to minimize this window."
+minimize_button_modifier_menu_hint = "Press modifier keys (Shift by default) or right click to minimize this window."
+"""
+bottom_dock_state = """
+[[surfaces]]
+
+[surfaces.Main]
+focused_node = 2
+collapsed = false
+collapsed_leaf_count = 0
+
+[[surfaces.Main.nodes]]
+
+[surfaces.Main.nodes.Horizontal]
+fraction = 0.10000000149011612
+fully_collapsed = false
+collapsed_leaf_count = 0
+
+[surfaces.Main.nodes.Horizontal.rect.min]
+x = 8.0
+y = 1042.0
+
+[surfaces.Main.nodes.Horizontal.rect.max]
+x = 1885.34375
+y = 1367.34375
+
+[[surfaces.Main.nodes]]
+
+[surfaces.Main.nodes.Leaf]
+active = 0
+scroll = 0.0
+collapsed = false
+
+[surfaces.Main.nodes.Leaf.rect.min]
+x = 8.0
+y = 1042.0
+
+[surfaces.Main.nodes.Leaf.rect.max]
+x = 195.3333282470703
+y = 1367.34375
+
+[surfaces.Main.nodes.Leaf.viewport.min]
+x = 8.0
+y = 1066.0
+
+[surfaces.Main.nodes.Leaf.viewport.max]
+x = 195.34375
+y = 1367.34375
+
+[[surfaces.Main.nodes.Leaf.tabs]]
+
+[surfaces.Main.nodes.Leaf.tabs.Debug]
+
+[[surfaces.Main.nodes]]
+
+[surfaces.Main.nodes.Leaf]
+active = 0
+scroll = 0.0
+collapsed = false
+
+[surfaces.Main.nodes.Leaf.rect.min]
+x = 196.0
+y = 1042.0
+
+[surfaces.Main.nodes.Leaf.rect.max]
+x = 1885.34375
+y = 1367.34375
+
+[surfaces.Main.nodes.Leaf.viewport.min]
+x = 196.0
+y = 1066.0
+
+[surfaces.Main.nodes.Leaf.viewport.max]
+x = 1885.34375
+y = 1367.34375
+
+[[surfaces.Main.nodes.Leaf.tabs]]
+
+[surfaces.Main.nodes.Leaf.tabs.Log]
+
+[translations.tab_context_menu]
+close_button = "Close"
+eject_button = "Eject"
+
+[translations.leaf]
+close_button_disabled_tooltip = "This leaf contains non-closable tabs."
+close_all_button = "Close window"
+close_all_button_menu_hint = "Right click to close this window."
+close_all_button_modifier_hint = "Press modifier keys (Shift by default) to close this window."
+close_all_button_modifier_menu_hint = "Press modifier keys (Shift by default) or right click to close this window."
+close_all_button_disabled_tooltip = "This window contains non-closable tabs."
+minimize_button = "Minimize window"
+minimize_button_menu_hint = "Right click to minimize this window."
+minimize_button_modifier_hint = "Press modifier keys (Shift by default) to minimize this window."
+minimize_button_modifier_menu_hint = "Press modifier keys (Shift by default) or right click to minimize this window."
+"""
