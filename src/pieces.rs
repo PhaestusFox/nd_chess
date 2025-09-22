@@ -63,22 +63,18 @@ impl ChessPiece {
             ChessPiece::Pawn => {
                 if white == Team::White {
                     // try moving forward
-                    let next = position.clone().inc(dimensions - 1);
+                    let next = position.clone().inc(0);
                     if board.get(&next).is_none() {
                         moves.push(next.clone());
-                        println!(
-                            "position: {position:?}, next: {next:?}, last: {}",
-                            position[dimensions - 1]
-                        );
-                        if position[dimensions - 1] == 1 {
-                            let next = next.clone().inc(dimensions - 1);
+                        if position[0] == 1 {
+                            let next = next.clone().inc(0);
                             if board.get(&next).is_none() {
                                 moves.push(next);
                             }
                         }
                     }
                     // try capturing diagonally
-                    for pos in PositionIter::new(&next, 0, dimensions - 2, -1..2) {
+                    for pos in PositionIter::new(&next, 1, dimensions - 1, -1..2) {
                         if pos == next {
                             continue;
                         }
@@ -89,10 +85,28 @@ impl ChessPiece {
                         }
                     }
                 } else {
-                    if position[dimensions - 1] == 6 {
-                        moves.push(position.clone().dec(dimensions - 1).dec(dimensions - 1));
+                    // try moving forward
+                    let next = position.clone().dec(0);
+                    if board.get(&next).is_none() {
+                        moves.push(next.clone());
+                        if position[0] == 6 {
+                            let next = next.clone().dec(0);
+                            if board.get(&next).is_none() {
+                                moves.push(next);
+                            }
+                        }
                     }
-                    moves.push(position.clone().dec(dimensions - 1));
+                    // try capturing diagonally
+                    for pos in PositionIter::new(&next, 1, dimensions - 1, -1..2) {
+                        if pos == next {
+                            continue;
+                        }
+                        if let Some(entity) = board.get(&pos)
+                            && let Ok(Team::Black) = pieces.get(entity)
+                        {
+                            moves.push(pos);
+                        }
+                    }
                 }
             }
             _ => {
@@ -154,8 +168,8 @@ fn spawn_pieces(
     dimensions: Res<super::board::Dimensions>,
     assets: Res<PieceAssets>,
 ) {
-    for position in PieceIter::new(**dimensions, true) {
-        if position.last() == 1 {
+    for position in PieceIter::new(**dimensions) {
+        if position[0] == 1 {
             let mut piece = commands.spawn((
                 Name::new("White Pawn"),
                 position.clone(),
@@ -168,10 +182,7 @@ fn spawn_pieces(
             } else {
                 piece.insert(Visibility::Hidden);
             }
-        }
-    }
-    for position in PieceIter::new(**dimensions, false) {
-        if position.last() == 6 {
+        } else if position[0] == 6 {
             let mut piece = commands.spawn((
                 Name::new("Black Pawn"),
                 position.clone(),
@@ -190,44 +201,33 @@ fn spawn_pieces(
 
 struct PieceIter {
     current: super::board::Position,
-    white: bool,
 }
 
 impl PieceIter {
-    fn new(dimensions: usize, white: bool) -> Self {
+    fn new(dimensions: usize) -> Self {
         let current = super::board::Position(vec![0; dimensions]);
-        Self { current, white }
+        Self { current }
     }
 }
 
 impl Iterator for PieceIter {
     type Item = super::board::Position;
     fn next(&mut self) -> Option<Self::Item> {
-        if self.current.last() > 1 {
+        if self.current[0] > 7 {
             return None;
         }
-        self.current.0[0] += 1;
+        *self.current.0.last_mut()? += 1;
         'out: loop {
-            for i in 0..self.current.len() {
-                if self.current[i] > 7 {
+            for i in (0..self.current.0.len()).rev() {
+                if self.current[i] > 7 && i != 0 {
                     self.current.0[i] = 0;
-                    self.current.0[i + 1] += 1;
+                    self.current.0[i - 1] += 1;
                     continue 'out;
                 }
             }
             break;
         }
-        for i in self.current.iter() {
-            assert!(*i <= 7, "Exceeded board limits: {:#?}", i);
-        }
-        if self.white {
-            Some(self.current.clone())
-        } else {
-            let mut out = self.current.clone();
-            let l = out.0.last_mut()?;
-            *l = 7 - *l;
-            Some(out)
-        }
+        Some(self.current.clone())
     }
 }
 
