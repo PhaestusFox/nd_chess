@@ -13,7 +13,7 @@ impl Plugin for BoardPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<BoardResource>()
             .init_resource::<BoardState>()
-            .insert_resource(Dimensions(4))
+            .insert_resource(Dimensions(5))
             .add_systems(Startup, spawn_board)
             .register_type::<Index>()
             .register_type::<Dimensions>()
@@ -122,10 +122,10 @@ fn get_rectangle_mesh() -> Mesh {
 }
 
 #[derive(Component, Deref, Reflect)]
-struct Index(u8);
+struct Index(i8);
 
 #[derive(Deref, Clone, Component, Hash, PartialEq, Eq, Default, Debug)]
-pub struct Position(pub Vec<u8>);
+pub struct Position(pub Vec<i8>);
 
 impl Position {
     fn new(world: &DeferredWorld, cell: Entity) -> Self {
@@ -143,7 +143,7 @@ impl Position {
     fn sum(&self) -> usize {
         self.0.iter().map(|&x| x as usize).sum()
     }
-    fn add_dimension(&mut self, dimension: usize, index: u8) {
+    fn add_dimension(&mut self, dimension: usize, index: i8) {
         let len = self.len();
         if len < dimension {
             self.0.extend((0..(dimension - len)).map(|_| 0));
@@ -157,6 +157,12 @@ impl Position {
         self
     }
 
+    pub fn inc_in_place(&mut self, dimension: usize) {
+        if let Some(last) = self.0.get_mut(dimension) {
+            *last += 1;
+        }
+    }
+
     pub fn dec(mut self, dimension: usize) -> Self {
         if let Some(last) = self.0.get_mut(dimension) {
             *last -= 1;
@@ -164,7 +170,13 @@ impl Position {
         self
     }
 
-    pub fn last(&self) -> u8 {
+    pub fn dec_in_place(&mut self, dimension: usize) {
+        if let Some(last) = self.0.get_mut(dimension) {
+            *last -= 1;
+        }
+    }
+
+    pub fn last(&self) -> i8 {
         self.0.last().copied().unwrap_or(8)
     }
 
@@ -183,6 +195,62 @@ impl Position {
     pub fn is_visible(&self, dimensions: usize) -> bool {
         dimensions < 7
     }
+
+    pub fn all_but(&self, dim: usize, val: i8) -> bool {
+        for (i, &v) in self.0.iter().enumerate() {
+            if i != dim && v != val {
+                return false;
+            }
+        }
+        true
+    }
+
+    pub fn all(&self, val: i8) -> bool {
+        for &v in self.0.iter() {
+            if v != val {
+                return false;
+            }
+        }
+        true
+    }
+
+    pub fn add(&mut self, other: &Position) {
+        for (a, b) in self.0.iter_mut().zip(other.0.iter()) {
+            *a += *b;
+        }
+    }
+    pub fn dec_all(&self) -> Position {
+        let mut out = self.clone();
+        for v in out.0.iter_mut() {
+            *v -= 1;
+        }
+        out
+    }
+    pub fn inc_all(&self) -> Position {
+        let mut out = self.clone();
+        for v in out.0.iter_mut() {
+            *v += 1;
+        }
+        out
+    }
+    pub fn is_valid(&self) -> bool {
+        for &i in self.0.iter() {
+            if !(0..=7).contains(&i) {
+                return false;
+            }
+        }
+        true
+    }
+
+    pub fn if_is(&self, dim: usize, val: i8) -> bool {
+        if let Some(v) = self.get(dim)
+            && val == *v
+        {
+            true
+        } else {
+            false
+        }
+    }
 }
 
 impl core::ops::Add for Position {
@@ -196,91 +264,147 @@ impl core::ops::Add for Position {
     }
 }
 
-pub struct DimensionIter<'a> {
-    pos: &'a Position,
+pub struct DimensionIter<const DISTANCE: i8> {
+    current: Position,
     dimension: usize,
-    range: std::ops::Range<i8>,
+    up: bool,
 }
 
-impl DimensionIter<'_> {
-    pub fn new(
-        pos: &Position,
-        dimension: usize,
-        range: std::ops::Range<i8>,
-    ) -> Option<DimensionIter> {
-        let Some(dim) = pos.0.get(dimension) else {
-            error!("Position does not have dimension {dimension}");
-            return None;
-        };
-        let mut min = range.start;
-        if min < 0 && min.unsigned_abs() > *dim {
-            min = -(*dim as i8);
-        }
-        let mut max = range.end;
-        if max > 0 && max as u8 + dim > 8 {
-            max = 7 - *dim as i8;
-        }
-        Some(DimensionIter {
-            pos,
+impl<const DISTANCE: i8> DimensionIter<DISTANCE> {
+    pub fn new(dimensions: usize, dimension: usize, inc: bool) -> DimensionIter<DISTANCE> {
+        debug_assert!(dimension < dimensions);
+        DimensionIter {
+            current: Position(vec![0; dimensions]),
             dimension,
-            range: min..max,
-        })
+            up: inc,
+        }
     }
 }
 
-impl Iterator for DimensionIter<'_> {
+impl<const DISTANCE: i8> Iterator for DimensionIter<DISTANCE> {
     type Item = Position;
 
     fn next(&mut self) -> Option<Self::Item> {
-        let &i = self.pos.get(self.dimension)?;
-        let offset = self.range.next()?;
-        let delta = offset.unsigned_abs();
-        let new = if offset < 0 { i - delta } else { i + delta };
-        let mut new_pos = self.pos.clone();
-        new_pos.0[self.dimension] = new;
-        Some(new_pos)
+        if self.current[self.dimension] > DISTANCE || self.current[self.dimension] < -DISTANCE {
+            return None;
+        }
+        let out = self.current.clone();
+        if self.up {
+            self.current.inc_in_place(self.dimension);
+        } else {
+            self.current.dec_in_place(self.dimension);
+        }
+        Some(out)
     }
 }
 
-pub struct PositionIter<'a> {
-    pos: &'a Position,
+pub struct PositionIter<const DISTANCE: i8> {
+    iter: DimensionIter<DISTANCE>,
     current_dimension: usize,
     end_dimension: usize,
-    current_iter: Option<DimensionIter<'a>>,
-    range: std::ops::Range<i8>,
+    was_inc: bool,
 }
 
-impl PositionIter<'_> {
-    pub fn new(
-        pos: &Position,
-        start_dimension: usize,
-        end_dimension: usize,
-        range: std::ops::Range<i8>,
-    ) -> PositionIter {
+impl<const DISTANCE: i8> PositionIter<DISTANCE> {
+    pub fn new(dimensions: usize) -> PositionIter<DISTANCE> {
         PositionIter {
-            pos,
-            current_dimension: start_dimension,
-            end_dimension,
-            current_iter: DimensionIter::new(pos, start_dimension, range.clone()),
-            range,
+            iter: DimensionIter::new(dimensions, 0, true),
+            current_dimension: 0,
+            end_dimension: dimensions - 1,
+            was_inc: true,
+        }
+    }
+    pub fn start_at(dimensions: usize, dimension: usize) -> PositionIter<DISTANCE> {
+        PositionIter {
+            iter: DimensionIter::new(dimensions, dimension, true),
+            current_dimension: dimension,
+            end_dimension: dimensions - 1,
+            was_inc: true,
         }
     }
 }
 
-impl Iterator for PositionIter<'_> {
+impl<const DISTANCE: i8> Iterator for PositionIter<DISTANCE> {
     type Item = Position;
 
     fn next(&mut self) -> Option<Self::Item> {
-        if let Some(next) = self.current_iter.as_mut()?.next() {
-            return Some(next);
-        }
-        self.current_dimension += 1;
         if self.current_dimension > self.end_dimension {
             return None;
         }
-        self.current_iter =
-            DimensionIter::new(self.pos, self.current_dimension, self.range.clone());
+        if let Some(next) = self.iter.next() {
+            return Some(next);
+        }
+        if self.was_inc {
+            self.was_inc = false;
+            self.iter = DimensionIter::new(self.end_dimension + 1, self.current_dimension, false);
+            self.iter.next();
+        } else if self.current_dimension != self.end_dimension {
+            self.current_dimension += 1;
+            self.was_inc = true;
+            self.iter = DimensionIter::new(self.end_dimension + 1, self.current_dimension, true);
+            self.iter.next();
+        } else {
+            return None;
+        }
         self.next()
+    }
+}
+
+pub struct NewPositionIter<const DISTANCE: u8> {
+    current: Position,
+}
+
+impl<const DISTANCE: u8> NewPositionIter<DISTANCE> {
+    pub fn new(dimensions: usize) -> Self {
+        Self {
+            current: Position(vec![0; dimensions]),
+        }
+    }
+}
+
+impl<const DISTANCE: u8> Iterator for NewPositionIter<DISTANCE> {
+    type Item = Position;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.current.last() > DISTANCE as i8 {
+            return None;
+        }
+        let out = self.current.clone();
+        self.current.0[0] += 1;
+        for i in 0..(self.current.0.len() - 1) {
+            if self.current.0[i] > DISTANCE as i8 {
+                self.current.0[i] = 0;
+                self.current.0[i + 1] += 1;
+            }
+        }
+        Some(out)
+    }
+}
+
+pub struct OffsetIter<T: Iterator<Item = Position>> {
+    base: Position,
+    iter: T,
+}
+
+impl<T: Iterator<Item = Position>> OffsetIter<T> {
+    pub fn new(base: Position, iter: T) -> Self {
+        Self { base, iter }
+    }
+}
+
+impl<T: Iterator<Item = Position>> Iterator for OffsetIter<T> {
+    type Item = Position;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let out = self.iter.next().map(|mut p| {
+            p.add(&self.base);
+            p
+        })?;
+        if out.is_valid() {
+            Some(out)
+        } else {
+            self.next()
+        }
     }
 }
 
@@ -291,6 +415,17 @@ fn spawn_board(mut commands: Commands, dimensions: Res<Dimensions>) {
         DimensionSpawner::new(**dimensions),
     ));
 }
+
+pub trait WithOffset {
+    fn with_offset(self, offset: Position) -> OffsetIter<Self>
+    where
+        Self: Sized + Iterator<Item = Position>,
+    {
+        OffsetIter::new(offset, self)
+    }
+}
+
+impl<T: Iterator<Item = Position>> WithOffset for T {}
 
 #[derive(Resource, Deref, DerefMut, Reflect)]
 pub struct Dimensions(usize);

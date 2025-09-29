@@ -93,7 +93,7 @@ impl DimensionSpawner {
             for (step, index) in DimensionStep::new(dimension) {
                 p.spawn((
                     Name::new(format!("Dimension {dimension}: {index}")),
-                    Index(index as u8),
+                    Index(index as i8),
                     Transform::from_translation(step),
                     DimensionSpawner::new(dimension - 1),
                 ));

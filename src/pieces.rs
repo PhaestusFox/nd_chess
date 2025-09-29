@@ -5,7 +5,8 @@ use bevy::{ecs::component::HookContext, render::mesh::VertexAttributeValues};
 
 use bevy::prelude::*;
 
-use crate::board::{self, BoardState, Position, PositionIter};
+use crate::board::{self, BoardState, NewPositionIter, Position, PositionIter};
+use crate::board::{DimensionIter, WithOffset};
 
 pub struct PiecesPlugin;
 
@@ -49,11 +50,20 @@ pub enum Team {
     Black,
 }
 
+impl Team {
+    pub fn opposite(&self) -> Self {
+        match self {
+            Team::White => Team::Black,
+            Team::Black => Team::White,
+        }
+    }
+}
+
 impl ChessPiece {
     pub fn all_possible_moves(
         &self,
         position: &Position,
-        white: Team,
+        team: Team,
         board: &BoardState,
         pieces: &Query<&Team>,
     ) -> Vec<Position> {
@@ -61,7 +71,7 @@ impl ChessPiece {
         let mut moves = Vec::new();
         match self {
             ChessPiece::Pawn => {
-                if white == Team::White {
+                if team == Team::White {
                     // try moving forward
                     let next = position.clone().inc(0);
                     if board.get(&next).is_none() {
@@ -74,7 +84,8 @@ impl ChessPiece {
                         }
                     }
                     // try capturing diagonally
-                    for pos in PositionIter::new(&next, 1, dimensions - 1, -1..2) {
+                    for pos in PositionIter::<1>::start_at(dimensions, 1).with_offset(next.clone())
+                    {
                         if pos == next {
                             continue;
                         }
@@ -97,18 +108,71 @@ impl ChessPiece {
                         }
                     }
                     // try capturing diagonally
-                    for pos in PositionIter::new(&next, 1, dimensions - 1, -1..2) {
+                    for pos in PositionIter::<1>::start_at(dimensions, 1).with_offset(next.clone())
+                    {
                         if pos == next {
                             continue;
                         }
                         if let Some(entity) = board.get(&pos)
-                            && let Ok(Team::Black) = pieces.get(entity)
+                            && let Ok(Team::White) = pieces.get(entity)
                         {
                             moves.push(pos);
                         }
                     }
                 }
             }
+            ChessPiece::King => {
+                for pos in NewPositionIter::<2>::new(position.len()).with_offset(position.dec_all())
+                {
+                    if pos == *position {
+                        continue;
+                    }
+                    if let Some(other) = board.get(&pos)
+                        && let Ok(other_team) = pieces.get(other)
+                        && *other_team == team
+                    {
+                        continue;
+                    }
+                    moves.push(pos);
+                }
+            }
+            ChessPiece::Rook => {
+                for axis in 0..dimensions {
+                    for next in DimensionIter::<7>::new(position.len(), axis, true)
+                        .with_offset(position.clone())
+                    {
+                        if next == *position {
+                            continue;
+                        }
+                        if let Some(other) = board.get(&next)
+                            && let Ok(other_team) = pieces.get(other)
+                        {
+                            if *other_team != team {
+                                moves.push(next.clone());
+                            }
+                            break;
+                        }
+                        moves.push(next.clone());
+                    }
+                    for next in DimensionIter::<7>::new(position.len(), axis, false)
+                        .with_offset(position.clone())
+                    {
+                        if next == *position {
+                            continue;
+                        }
+                        if let Some(other) = board.get(&next)
+                            && let Ok(other_team) = pieces.get(other)
+                        {
+                            if *other_team != team {
+                                moves.push(next.clone());
+                            }
+                            break;
+                        }
+                        moves.push(next.clone());
+                    }
+                }
+            }
+            ChessPiece::Bishop => {}
             _ => {
                 error!("{:?}: Not implemented yet", self);
             }
@@ -127,7 +191,11 @@ impl ChessPiece {
         let assets = world.resource::<PieceAssets>();
         let mesh = match piece {
             ChessPiece::Pawn => assets.meshes[0].clone(),
-            _ => assets.meshes[1].clone(),
+            ChessPiece::Rook => assets.meshes[1].clone(),
+            ChessPiece::King => assets.meshes[2].clone(),
+            ChessPiece::Bishop => assets.meshes[3].clone(),
+            ChessPiece::Knight => assets.meshes[4].clone(),
+            ChessPiece::Queen => assets.meshes[5].clone(),
         };
         let mut commands = world.commands();
         commands
@@ -149,6 +217,10 @@ impl FromWorld for PieceAssets {
         let mut meshes = world.resource_mut::<Assets<Mesh>>();
         let cube = meshes.add(Mesh::from(Cuboid::from_length(0.8)));
         let sphere = meshes.add(Mesh::from(Sphere::new(0.8)));
+        let cylinder = meshes.add(Mesh::from(Cylinder::new(0.4, 0.8)));
+        let cone = meshes.add(Mesh::from(Cone::new(0.8, 0.8)));
+        let torus = meshes.add(Mesh::from(bevy::math::primitives::Torus::new(0.4, 0.8)));
+        let capsule = meshes.add(Mesh::from(bevy::math::primitives::Capsule3d::new(0.4, 0.4)));
         let mut materials = world.resource_mut::<Assets<StandardMaterial>>();
         let white_material = materials.add(StandardMaterial::default());
         let black_material = materials.add(StandardMaterial {
@@ -156,7 +228,7 @@ impl FromWorld for PieceAssets {
             ..Default::default()
         });
         Self {
-            meshes: vec![cube, sphere],
+            meshes: vec![cube, cylinder, sphere, cone, capsule, torus],
             white_material,
             black_material,
         }
@@ -182,6 +254,7 @@ fn spawn_pieces(
             } else {
                 piece.insert(Visibility::Hidden);
             }
+            continue;
         } else if position[0] == 6 {
             let mut piece = commands.spawn((
                 Name::new("Black Pawn"),
@@ -195,6 +268,120 @@ fn spawn_pieces(
             } else {
                 piece.insert(Visibility::Hidden);
             }
+            continue;
+        }
+        if position[0] != 0 && position[0] != 7 {
+            continue;
+        }
+        let team = if position[0] == 0 {
+            Team::White
+        } else {
+            Team::Black
+        };
+        // king check
+        if position.all_but(0, 4) {
+            let mut piece = commands.spawn((position.clone(), ChessPiece::King, team));
+            if team == Team::White {
+                piece.insert((
+                    Name::new("White King"),
+                    MeshMaterial3d(assets.white_material.clone()),
+                ));
+            } else {
+                piece.insert((
+                    Name::new("Black King"),
+                    MeshMaterial3d(assets.black_material.clone()),
+                ));
+            }
+            if position.is_visible(**dimensions) {
+                piece.insert(Visibility::Visible);
+            } else {
+                piece.insert(Visibility::Hidden);
+            }
+            continue;
+        }
+        // rook check
+        if position.if_is(1, 0) || position.if_is(1, 7) {
+            let mut piece = commands.spawn((position.clone(), ChessPiece::Rook, team));
+            if team == Team::White {
+                piece.insert((
+                    Name::new("White Rook"),
+                    MeshMaterial3d(assets.white_material.clone()),
+                ));
+            } else {
+                piece.insert((
+                    Name::new("Black Rook"),
+                    MeshMaterial3d(assets.black_material.clone()),
+                ));
+            }
+            if position.is_visible(**dimensions) {
+                piece.insert(Visibility::Visible);
+            } else {
+                piece.insert(Visibility::Hidden);
+            }
+            continue;
+        }
+        // bishop check
+        if position.if_is(1, 2) || position.if_is(1, 5) {
+            let mut piece = commands.spawn((position.clone(), ChessPiece::Bishop, team));
+            if team == Team::White {
+                piece.insert((
+                    Name::new("White Bishop"),
+                    MeshMaterial3d(assets.white_material.clone()),
+                ));
+            } else {
+                piece.insert((
+                    Name::new("Black Bishop"),
+                    MeshMaterial3d(assets.black_material.clone()),
+                ));
+            }
+            if position.is_visible(**dimensions) {
+                piece.insert(Visibility::Visible);
+            } else {
+                piece.insert(Visibility::Hidden);
+            }
+            continue;
+        }
+        // knight check
+        if position.if_is(1, 1) || position.if_is(1, 6) {
+            let mut piece = commands.spawn((position.clone(), ChessPiece::Knight, team));
+            if team == Team::White {
+                piece.insert((
+                    Name::new("White Knight"),
+                    MeshMaterial3d(assets.white_material.clone()),
+                ));
+            } else {
+                piece.insert((
+                    Name::new("Black Knight"),
+                    MeshMaterial3d(assets.black_material.clone()),
+                ));
+            }
+            if position.is_visible(**dimensions) {
+                piece.insert(Visibility::Visible);
+            } else {
+                piece.insert(Visibility::Hidden);
+            }
+            continue;
+        }
+        // Queen check
+        if position.if_is(1, 3) {
+            let mut piece = commands.spawn((position.clone(), ChessPiece::Queen, team));
+            if team == Team::White {
+                piece.insert((
+                    Name::new("White Queen"),
+                    MeshMaterial3d(assets.white_material.clone()),
+                ));
+            } else {
+                piece.insert((
+                    Name::new("Black Queen"),
+                    MeshMaterial3d(assets.black_material.clone()),
+                ));
+            }
+            if position.is_visible(**dimensions) {
+                piece.insert(Visibility::Visible);
+            } else {
+                piece.insert(Visibility::Hidden);
+            }
+            continue;
         }
     }
 }
@@ -216,6 +403,7 @@ impl Iterator for PieceIter {
         if self.current[0] > 7 {
             return None;
         }
+        let out = self.current.clone();
         *self.current.0.last_mut()? += 1;
         'out: loop {
             for i in (0..self.current.0.len()).rev() {
@@ -227,7 +415,7 @@ impl Iterator for PieceIter {
             }
             break;
         }
-        Some(self.current.clone())
+        Some(out)
     }
 }
 
