@@ -207,6 +207,60 @@ impl ChessPiece {
                     }
                 }
             }
+            ChessPiece::Queen => {
+                // rook like
+                for axis in 0..dimensions {
+                    for next in
+                        DimensionIter::<7>::new(position.len(), axis, true).with_offset(position)
+                    {
+                        if next == *position {
+                            continue;
+                        }
+                        if let Some(other) = board.get(&next)
+                            && let Ok(other_team) = pieces.get(other)
+                        {
+                            if *other_team != team {
+                                moves.push(next.clone());
+                            }
+                            break;
+                        }
+                        moves.push(next.clone());
+                    }
+                    for next in
+                        DimensionIter::<7>::new(position.len(), axis, false).with_offset(position)
+                    {
+                        if next == *position {
+                            continue;
+                        }
+                        if let Some(other) = board.get(&next)
+                            && let Ok(other_team) = pieces.get(other)
+                        {
+                            if *other_team != team {
+                                moves.push(next.clone());
+                            }
+                            break;
+                        }
+                        moves.push(next.clone());
+                    }
+                }
+                // bishop like
+                for diagonal in BishopMoveIterator::new(dimensions) {
+                    for next in diagonal.with_offset(position) {
+                        if next == *position {
+                            continue;
+                        }
+                        if let Some(other) = board.get(&next)
+                            && let Ok(other_team) = pieces.get(other)
+                        {
+                            if *other_team != team {
+                                moves.push(next.clone());
+                            }
+                            break;
+                        }
+                        moves.push(next.clone());
+                    }
+                }
+            }
             _ => {
                 error!("{:?}: Not implemented yet", self);
             }
