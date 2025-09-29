@@ -381,23 +381,23 @@ impl<const DISTANCE: u8> Iterator for NewPositionIter<DISTANCE> {
     }
 }
 
-pub struct OffsetIter<T: Iterator<Item = Position>> {
-    base: Position,
+pub struct OffsetIter<'a, T: Iterator<Item = Position>> {
+    base: &'a Position,
     iter: T,
 }
 
-impl<T: Iterator<Item = Position>> OffsetIter<T> {
-    pub fn new(base: Position, iter: T) -> Self {
+impl<'a, T: Iterator<Item = Position>> OffsetIter<'a, T> {
+    pub fn new(base: &'a Position, iter: T) -> Self {
         Self { base, iter }
     }
 }
 
-impl<T: Iterator<Item = Position>> Iterator for OffsetIter<T> {
+impl<T: Iterator<Item = Position>> Iterator for OffsetIter<'_, T> {
     type Item = Position;
 
     fn next(&mut self) -> Option<Self::Item> {
         let out = self.iter.next().map(|mut p| {
-            p.add(&self.base);
+            p.add(self.base);
             p
         })?;
         if out.is_valid() {
@@ -417,7 +417,7 @@ fn spawn_board(mut commands: Commands, dimensions: Res<Dimensions>) {
 }
 
 pub trait WithOffset {
-    fn with_offset(self, offset: Position) -> OffsetIter<Self>
+    fn with_offset(self, offset: &Position) -> OffsetIter<Self>
     where
         Self: Sized + Iterator<Item = Position>,
     {

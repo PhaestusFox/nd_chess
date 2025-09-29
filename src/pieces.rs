@@ -7,6 +7,9 @@ use bevy::prelude::*;
 
 use crate::board::{self, BoardState, NewPositionIter, Position, PositionIter};
 use crate::board::{DimensionIter, WithOffset};
+use crate::pieces::move_iterators::BishopMoveIterator;
+
+mod move_iterators;
 
 pub struct PiecesPlugin;
 
@@ -84,8 +87,7 @@ impl ChessPiece {
                         }
                     }
                     // try capturing diagonally
-                    for pos in PositionIter::<1>::start_at(dimensions, 1).with_offset(next.clone())
-                    {
+                    for pos in PositionIter::<1>::start_at(dimensions, 1).with_offset(&next) {
                         if pos == next {
                             continue;
                         }
@@ -108,8 +110,7 @@ impl ChessPiece {
                         }
                     }
                     // try capturing diagonally
-                    for pos in PositionIter::<1>::start_at(dimensions, 1).with_offset(next.clone())
-                    {
+                    for pos in PositionIter::<1>::start_at(dimensions, 1).with_offset(&next) {
                         if pos == next {
                             continue;
                         }
@@ -122,8 +123,8 @@ impl ChessPiece {
                 }
             }
             ChessPiece::King => {
-                for pos in NewPositionIter::<2>::new(position.len()).with_offset(position.dec_all())
-                {
+                let dec = position.dec_all();
+                for pos in NewPositionIter::<2>::new(position.len()).with_offset(&dec) {
                     if pos == *position {
                         continue;
                     }
@@ -138,8 +139,8 @@ impl ChessPiece {
             }
             ChessPiece::Rook => {
                 for axis in 0..dimensions {
-                    for next in DimensionIter::<7>::new(position.len(), axis, true)
-                        .with_offset(position.clone())
+                    for next in
+                        DimensionIter::<7>::new(position.len(), axis, true).with_offset(position)
                     {
                         if next == *position {
                             continue;
@@ -154,8 +155,8 @@ impl ChessPiece {
                         }
                         moves.push(next.clone());
                     }
-                    for next in DimensionIter::<7>::new(position.len(), axis, false)
-                        .with_offset(position.clone())
+                    for next in
+                        DimensionIter::<7>::new(position.len(), axis, false).with_offset(position)
                     {
                         if next == *position {
                             continue;
@@ -172,7 +173,25 @@ impl ChessPiece {
                     }
                 }
             }
-            ChessPiece::Bishop => {}
+            ChessPiece::Bishop => {
+                for diagonal in BishopMoveIterator::new(dimensions) {
+                    for next in diagonal.with_offset(position) {
+                        if next == *position {
+                            continue;
+                        }
+                        println!("{next:?}");
+                        if let Some(other) = board.get(&next)
+                            && let Ok(other_team) = pieces.get(other)
+                        {
+                            if *other_team != team {
+                                moves.push(next.clone());
+                            }
+                            break;
+                        }
+                        moves.push(next.clone());
+                    }
+                }
+            }
             _ => {
                 error!("{:?}: Not implemented yet", self);
             }
@@ -452,7 +471,6 @@ fn select_piece(
     if can_select.get(trigger.target()).is_err() {
         return;
     }
-    println!("Clicked on {:?}", trigger.target());
     if selected.contains(trigger.target()) {
         commands.entity(trigger.target()).remove::<Selected>();
     } else {
