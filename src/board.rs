@@ -143,7 +143,7 @@ impl Position {
     fn sum(&self) -> usize {
         self.0.iter().map(|&x| x as usize).sum()
     }
-    fn add_dimension(&mut self, dimension: usize, index: i8) {
+    pub fn add_dimension(&mut self, dimension: usize, index: i8) {
         let len = self.len();
         if len < dimension {
             self.0.extend((0..(dimension - len)).map(|_| 0));

@@ -7,7 +7,7 @@ use bevy::prelude::*;
 
 use crate::board::{self, BoardState, NewPositionIter, Position, PositionIter};
 use crate::board::{DimensionIter, WithOffset};
-use crate::pieces::move_iterators::BishopMoveIterator;
+use crate::pieces::move_iterators::{BishopMoveIterator, KnightMoveIterator, LMoveIter};
 
 mod move_iterators;
 
@@ -179,7 +179,6 @@ impl ChessPiece {
                         if next == *position {
                             continue;
                         }
-                        println!("{next:?}");
                         if let Some(other) = board.get(&next)
                             && let Ok(other_team) = pieces.get(other)
                         {
@@ -189,6 +188,22 @@ impl ChessPiece {
                             break;
                         }
                         moves.push(next.clone());
+                    }
+                }
+            }
+            ChessPiece::Knight => {
+                for step in KnightMoveIterator::new(dimensions) {
+                    for next in step.with_offset(position) {
+                        if next == *position {
+                            continue;
+                        }
+                        if let Some(other) = board.get(&next)
+                            && let Ok(other_team) = pieces.get(other)
+                            && *other_team == team
+                        {
+                            continue;
+                        }
+                        moves.push(next);
                     }
                 }
             }
@@ -298,7 +313,7 @@ fn spawn_pieces(
             Team::Black
         };
         // king check
-        if position.all_but(0, 4) {
+        if position.if_is(1, 4) {
             let mut piece = commands.spawn((position.clone(), ChessPiece::King, team));
             if team == Team::White {
                 piece.insert((
